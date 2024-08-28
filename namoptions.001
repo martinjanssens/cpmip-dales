@@ -106,26 +106,36 @@ lsamptendnr = .false.
 ltendleib = .false.
 lprocblock = .true.
 ltenddec = .true.
-
 /
 &NAMTIMESTAT
 ltimestat  = .true.
 dtav       = 60
 /
 &NAMCROSSSECTION
-lcross     = .false.
-dtav       = 60
+lcross     = .true.
+dtav       = 300
+lxz        = .false.
+lyz        = .false.
+crossheight = 1, 11, 26   ! 10m, 400m, 1000m
 /
 &NAMGENSTAT
 lstat      = .true.
-dtav       = 30
-timeav     = 30
+dtav       = 60
+timeav     = 60
 /
 
 &NAMFIELDDUMP
-lfielddump = .false.
-dtav       = 120
+lfielddump = .true.
+dtav       = 1800
 ldiracc    = .true.
+lu    = .true.
+lv    = .true.
+lw    = .true.
+lqt   = .true.
+lql   = .true.
+lthl  = .true.
+lbuoy = .false.
+lsv   = .true., .true.
 /
 &NAMSTATTEND
 dtav       = 60
@@ -143,10 +153,9 @@ timeav     = 30
 /
 &NAMRADSTAT
 lstat = .true.
-dtav = 1200
-timeav = 1200
+dtav = 60
+timeav = 60
 /
-
 &NAMRADFIELD
 lradfield = .false.
 dtav  = 1200
@@ -159,7 +168,7 @@ lsync = .true.
 /
 &NAMCAPE
 lcape = .true.
-dtav = 600
+dtav = 300
 /
 &NAMSCALARPULSE
 lscalarpulse = .true.
