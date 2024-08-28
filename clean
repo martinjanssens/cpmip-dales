@@ -1,0 +1,5 @@
+#!/bin/bash
+rm init* baseprof.inp.001 tms* field.001 flux* moments.001 profiles.001.nc all* bu* cld* sampling.001.nc sbbudget.001 upd* sv00* qlptend.001 precep.001 nptend.001 qtptend.001 varbudget.001 rad*stat.001 tracerdata.inp
+rm cape* cross* fielddump.00* radfield* samptend*
+rm -r 00* output*
+# rm dales4

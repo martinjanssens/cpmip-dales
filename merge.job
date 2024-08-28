@@ -1,0 +1,158 @@
+#!/bin/sh
+#PJM -L "node=1"
+#PJM -L "rscgrp=small"
+#PJM -L "elapse=24:00:00"
+#PJM --mpi max-proc-per-node=4
+#PJM --llio cn-cache-size=6Gi # default = 128Mb
+#PJM --llio sio-read-cache=on
+#PJM -x PJM_LLIO_GFSCACHE=/vol0004:/vol0005
+#PJM -g hp240116
+#PJM -s
+
+#  PJM -L "elapse=24:00:00"
+# other PJM flags
+#  --llio localtmp-size=500Mi
+
+# do not create empty stdout/stderr files
+export PLE_MPI_STD_EMPTYFILE=off
+export OMP_NUM_THREADS=12
+
+# script to merge DALES output
+# for Fugaku compute nodes
+# for cloud botany 2021
+
+
+. /vol0500/data/hp240116/spack/share/spack/setup-env.sh
+spack load cdo%fj
+
+CDO=cdo
+
+# requires cdo version >= 2.0.4 to handle grid right
+# and preserve xt,yt
+
+# find number of tiles in X and Y directions.
+NX=`ls 000/cape.x*y000.001.nc | wc -l`
+NY=`ls [0-9]* -d | wc -l`
+
+# control CPU binding, so that we can run several cdo processes
+# in parallel and have them on different CPU cores
+# this is from 2021, things may have changed
+# at that time, effort was needed to not have all cdo
+# bound to the same CPU core.
+
+# numactl seems not effective on OpenMP programs
+# otherwise numactl --cpunodebind=4
+# 4,5,6,7 are the core groups to use
+# node 4 cpus: 12 13 14 15 16 17 18 19 20 21 22 23
+# node 5 cpus: 24 25 26 27 28 29 30 31 32 33 34 35
+# node 6 cpus: 36 37 38 39 40 41 42 43 44 45 46 47
+# node 7 cpus: 48 49 50 51 52 53 54 55 56 57 58 59
+#
+
+#export GOMP_CPU_AFFINITY="12,13,14,15,16,17,18,19"
+
+#export GOMP_CPU_AFFINITY="24,25,26,27,28,29,30,31"
+#echo -n "start merging cape "
+#date
+
+echo "NX: $NX  NY: $NY"
+
+# === SAMPTEND ===
+# merge rows
+n=0
+for y in `seq -f "%03.0f" 0 $((NY - 1))` ; do
+    echo -n "    start merging samptend row $y "
+    export GOMP_CPU_AFFINITY=$(( 12*(n+1) ))
+    date
+    $CDO -f nc4 -r -O collgrid samptend.x*y$y.001.nc  tmp-samptend.$y.nc &
+    
+    n=$((n+1))
+    if [ $n -eq 4 ] ; then
+        # check core binding:
+        #sleep 4
+        #for i in $(pgrep cdo); do ps -mo pid,tid,fname,user,psr -p $i;done
+        wait
+        n=0
+    fi
+
+done
+wait
+
+echo -n "    start final samptend merge "
+date
+#final merges
+
+export GOMP_CPU_AFFINITY=16
+$CDO -f nc4 -z zip_6 -r -O collgrid tmp-samptend.*.nc samptend.nc  &
+
+wait
+
+rm tmp-*.nc
+
+# === CAPE ===
+# merge rows
+n=0
+for y in `seq -f "%03.0f" 0 $((NY - 1))` ; do
+    echo -n "    start merging cape row $y "
+    date
+    export GOMP_CPU_AFFINITY=$(( 12*(n+1) ))
+    $CDO -f nc4 -r -O collgrid $y/cape.x*y$y.001.nc  tmp-cape.$y.nc &
+
+    n=$((n+1))
+    if [ $n -eq 4 ] ; then
+        # check core binding:
+	#sleep 4
+	#for i in $(pgrep cdo); do ps -mo pid,tid,fname,user,psr -p $i;done
+	wait
+	n=0
+    fi
+
+done
+wait
+
+echo -n "    start final cape merge "
+date
+#final merge
+export GOMP_CPU_AFFINITY=12
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,lwp tmp-cape.*.nc cape-lwp.nc  &
+export GOMP_CPU_AFFINITY=24
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,rwp tmp-cape.*.nc cape-rwp.nc  &
+export GOMP_CPU_AFFINITY=36
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,twp tmp-cape.*.nc cape-twp.nc  &
+export GOMP_CPU_AFFINITY=48
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,cldtop tmp-cape.*.nc cape-cldtop.nc &
+export GOMP_CPU_AFFINITY=14
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,surfprec tmp-cape.*.nc cape-surfprec.nc &
+wait
+
+export GOMP_CPU_AFFINITY=26
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,hmix tmp-cape.*.nc cape-hmix.nc &
+export GOMP_CPU_AFFINITY=38
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,hinvsrf tmp-cape.*.nc cape-hinvsrf.nc &
+export GOMP_CPU_AFFINITY=50
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,umix tmp-cape.*.nc cape-umix.nc &
+export GOMP_CPU_AFFINITY=16
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,vmix tmp-cape.*.nc cape-vmix.nc &
+export GOMP_CPU_AFFINITY=28
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,thetavmix tmp-cape.*.nc cape-thetavmix.nc &
+
+wait
+
+export GOMP_CPU_AFFINITY=12
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,dcape tmp-cape.*.nc cape-dcape.nc  &
+export GOMP_CPU_AFFINITY=24
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,dcin tmp-cape.*.nc cape-dcin.nc  &
+export GOMP_CPU_AFFINITY=36
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,dscape tmp-cape.*.nc cape-dscape.nc  &
+export GOMP_CPU_AFFINITY=48
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,dscin tmp-cape.*.nc cape-dscin.nc  &
+export GOMP_CPU_AFFINITY=26
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,capemax tmp-cape.*.nc cape-capemax.nc  &
+export GOMP_CPU_AFFINITY=38
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,cinmax tmp-cape.*.nc cape-cinmax.nc  &
+
+wait
+
+rm tmp-*.nc
+
+# add merging of fielddump, cross still

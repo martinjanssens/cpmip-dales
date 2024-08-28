@@ -1,0 +1,34 @@
+#!/bin/sh
+#PJM -L "node=32"
+#PJM -L "rscgrp=small"
+#PJM -L "elapse=48:00:00"
+#PJM --mpi max-proc-per-node=32
+#PJM --llio cn-cache-size=1Gi # default = 128Mb
+#PJM --llio sio-read-cache=on
+#PJM -x PJM_LLIO_GFSCACHE=/vol0004:/vol0005
+#PJM -g hp240116
+#PJM -s
+
+# do not create empty stdout/stderr files
+export PLE_MPI_STD_EMPTYFILE=off
+
+# transfer loaded spack libraries to 1st layer storage
+echo $LD_LIBRARY_PATH | sed -e 's/:/\n/g' | grep '^/vol0004/apps/oss/spack' | xargs /home/system/tool/dir_transfer
+
+module unload lang
+module load lang/tcsds-1.2.38
+. /vol0004/apps/oss/spack/share/spack/setup-env.sh
+spack load netcdf-fortran@4.6.1%fj
+spack load fftw%fj/tvu5j7p
+
+export LDFLAGS="-lhdf5_hl -lhdf5"
+export SYST=FX-Fujitsu
+
+DALES=~/dales/build-91d7ba0/src/dales4.4
+
+llio_transfer ${DALES}
+
+NAMOPTIONS=namoptions.001
+NTOT=1024
+
+mpiexec -n $NTOT $DALES $NAMOPTIONS
