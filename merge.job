@@ -57,38 +57,7 @@ NY=`ls [0-9]* -d | wc -l`
 
 echo "NX: $NX  NY: $NY"
 
-# === SAMPTEND ===
-# merge rows
-n=0
-for y in `seq -f "%03.0f" 0 $((NY - 1))` ; do
-    echo -n "    start merging samptend row $y "
-    export GOMP_CPU_AFFINITY=$(( 12*(n+1) ))
-    date
-    $CDO -f nc4 -r -O collgrid samptend.x*y$y.001.nc  tmp-samptend.$y.nc &
-    
-    n=$((n+1))
-    if [ $n -eq 4 ] ; then
-        # check core binding:
-        #sleep 4
-        #for i in $(pgrep cdo); do ps -mo pid,tid,fname,user,psr -p $i;done
-        wait
-        n=0
-    fi
-
-done
-wait
-
-echo -n "    start final samptend merge "
 date
-#final merges
-
-export GOMP_CPU_AFFINITY=16
-$CDO -f nc4 -z zip_6 -r -O collgrid tmp-samptend.*.nc samptend.nc  &
-
-wait
-
-rm tmp-*.nc
-
 # === CAPE ===
 # merge rows
 n=0

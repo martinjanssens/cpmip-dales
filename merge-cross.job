@@ -1,0 +1,73 @@
+#!/bin/sh
+#PJM -L "node=1"
+#PJM -L "rscgrp=small-s3"
+#PJM -L "elapse=24:00:00"
+#PJM --mpi max-proc-per-node=4
+#PJM --llio cn-cache-size=6Gi # default = 128Mb
+#PJM --llio sio-read-cache=on
+#PJM -x PJM_LLIO_GFSCACHE=/vol0004:/vol0005
+#PJM -g hp240116
+#PJM -s
+
+#  PJM -L "elapse=24:00:00"
+# other PJM flags
+#  --llio localtmp-size=500Mi
+
+# do not create empty stdout/stderr files
+export PLE_MPI_STD_EMPTYFILE=off
+export OMP_NUM_THREADS=12
+
+# script to merge DALES output
+# for Fugaku compute nodes
+# for cloud botany 2021
+
+
+. /vol0500/data/hp240116/spack/share/spack/setup-env.sh
+spack load cdo%fj
+
+CDO=cdo
+
+# requires cdo version >= 2.0.4 to handle grid right
+# and preserve xt,yt
+
+# find number of tiles in X and Y directions.
+NX=`ls 000/cape.x*y000.001.nc | wc -l`
+NY=`ls [0-9]* -d | wc -l`
+
+echo "NX: $NX  NY: $NY"
+
+date
+
+# === CROSSXY ===
+
+n=0
+for L in 0001 0011 0026; do
+    export GOMP_CPU_AFFINITY=$((12*(n+1)))
+    (
+        echo -n "start merging crossxy $L "
+        date
+        for y in `seq -f "%03.0f" 0 $((NY - 1))` ; do
+            echo -n "    start merging crossxy.$L row $y "
+            date
+            $CDO -f nc4 -r -O collgrid,uxy,vxy,wxy,thlxy,qtxy,qlxy \
+                 $y/crossxy.$L.*.nc tmp-crossxy.$L.$y.nc
+        done
+
+    ) &
+    n=$((n+1))
+done
+wait
+
+# these were in the loop above, moved out to save memory
+echo -n "    start final merges crossxy"
+date
+export GOMP_CPU_AFFINITY=12
+$CDO -f nc4  -z zip_6 -r -O collgrid,1 tmp-crossxy.0001.*.nc crossxy.0001.nc &
+export GOMP_CPU_AFFINITY=24
+$CDO -f nc4  -z zip_6 -r -O collgrid,1 tmp-crossxy.0011.*.nc crossxy.0013.nc &
+wait
+export GOMP_CPU_AFFINITY=12
+$CDO -f nc4  -z zip_6 -r -O collgrid,1 tmp-crossxy.0026.*.nc crossxy.0035.nc &
+wait
+
+rm tmp-*.nc
