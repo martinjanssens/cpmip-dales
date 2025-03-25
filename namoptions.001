@@ -46,7 +46,7 @@ thls       =  298.6
 lmoist     =  .true.
 isurf      =  2       !Forced surface temperature; fluxes are calculated
 iradiation =  4
-timerad    =  1200
+timerad    =  150
 lcoriol    =  .true.
 lmomsubs   =  .false.
 ltimedep   =  .true.
@@ -70,8 +70,8 @@ n2o_fraction  = 332.8e-9
 /
 &DYNAMICS
 lqlnr      =  .false.
-cu         =  -7.02
-cv         =  -1.14
+cu         =  -7.2
+cv         =  -1.6
 
 iadv_mom   =  2
 iadv_tke   =  2
@@ -81,7 +81,7 @@ iadv_sv    =  7,7
 /
 &NAMMICROPHYSICS
 imicro     = 2
-Nc_0       = 70000000
+Nc_0       = 400000000
 l_sb       = .true. 
 /
 &NAMBULKMICROSTAT
@@ -95,7 +95,7 @@ tcheck     = 0
 &NAMSAMPLING
 dtav       = 60
 timeav     = 1800
-lsamptend  = .true.
+lsamptend  = .false.
 lsamptendu = .false.
 lsamptendv = .false.
 lsamptendw = .false.
