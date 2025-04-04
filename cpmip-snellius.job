@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --ntasks=2304
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=rome
+#SBATCH --time=72:00:00
+
+SYST=gnu-fast
+NAMOPTIONS=namoptions.001
+
+# 2024 toolchain
+module load 2024
+module load foss/2024a
+module load netCDF-Fortran/4.6.1-gompi-2024a
+module load CMake/3.29.3-GCCcore-13.3.0
+
+# Define DALES
+TAG=8e8b29d9
+DALES=/home/janssens/dales-new/dales/build-$TAG/bin/dales
+
+CASE=`pwd`
+
+echo DALES $DALES
+echo CASE $CASE
+echo hostname `hostname`
+
+# /usr/bin/time -f"%e"
+srun $DALES $NAMOPTIONS
