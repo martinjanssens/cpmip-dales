@@ -2,7 +2,7 @@
 iexpnr     =  001
 lwarmstart =  .false.
 startfile  =  'initd001h00mx000y000.001'
-runtime    =  93600
+runtime    =  122400
 trestart   =  0
 ladaptive  =  .true.
 irandom    =  43
@@ -126,7 +126,7 @@ timeav     = 60
 
 &NAMFIELDDUMP
 lfielddump = .true.
-dtav       = 1800
+dtav       = 7200
 ldiracc    = .true.
 lu    = .true.
 lv    = .true.
@@ -137,7 +137,7 @@ lthl  = .true.
 lbuoy = .false.
 lsv   = .true., .true.
 /
-&NAMSTATTEND
+&NAMSTATTENDs
 dtav       = 60
 timeav     = 21600
 ltend      = .true.
