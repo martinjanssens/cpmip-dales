@@ -1,0 +1,54 @@
+#!/bin/bash
+#SBATCH --ntasks=32
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=rome
+#SBATCH --time=72:00:00
+
+module load 2024
+module load CDO/2.4.4-gompi-2024a
+CDO=cdo
+
+
+# find number of tiles in X and Y directions.
+NX=`ls 000/cape.x*y000.001.nc | wc -l`
+NY=`ls [0-9]* -d | wc -l`
+
+echo "NX: $NX  NY: $NY"
+
+# === FIELDDUMP ===
+
+echo -n "start merging fielddump "
+date
+n=0
+for y in `seq -f "%03.0f" 0 $((NY - 1))` ; do
+    echo -n "    start merging fielddump row $y "
+    date
+    export GOMP_CPU_AFFINITY=$((12*(n+1)))
+    $CDO -f nc4 -r -O collgrid,$NX,u,v,w,thl,qt,ql $y/fielddump.*.nc  tmp-fielddump.$y.nc &
+    #    # add sv001 here, if present?
+    n=$((n+1))
+    if [ $n -eq 4 ] ; then
+        wait
+        n=0
+    fi
+done
+
+echo -n "    start final merges fielddump"
+
+export GOMP_CPU_AFFINITY=24
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,ql    tmp-fielddump.*.nc fielddump-ql.nc &
+export GOMP_CPU_AFFINITY=36
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,qt    tmp-fielddump.*.nc fielddump-qt.nc &
+export GOMP_CPU_AFFINITY=48
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,thl  tmp-fielddump.*.nc fielddump-thl.nc &
+export GOMP_CPU_AFFINITY=16
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,w   tmp-fielddump.*.nc fielddump-w.nc &
+export GOMP_CPU_AFFINITY=30
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,v   tmp-fielddump.*.nc fielddump-v.nc &
+export GOMP_CPU_AFFINITY=40
+$CDO -f nc4 -z zip_6 -r -O collgrid,1,u   tmp-fielddump.*.nc fielddump-u.nc &
+wait
+
+echo "cleaning up"
+rm tmp-fielddump*.nc
+
